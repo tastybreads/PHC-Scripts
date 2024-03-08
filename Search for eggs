@@ -1,0 +1,121 @@
+// ==UserScript==
+// @name         phc Enhanced Persistent Pokemon Egg Finder
+// @namespace    http://tampermonkey.net/
+// @version      1.6
+// @description  Automatically search and visually highlight Pokemon eggs as you type, with dynamic and persistent search fields.
+// @author       You
+// @match        https://richardpaulastley.github.io/PHC/html/shelter.html
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Function to highlight eggs based on the search term
+    function highlightEggs() {
+        // Check if any egg matches the search criteria and set a message
+let eggFound = false;
+document.querySelectorAll('.pokemonEggSearch').forEach(input => {
+    const name = input.value.trim().toLowerCase();
+    if (!name) return;
+    document.querySelectorAll('img').forEach(img => {
+        if (img.alt.toLowerCase().includes(name)) {
+            if (!eggFound) { // Create and display the message only once
+                const shelterLink = document.querySelector('a[href="shelter.html"]').parentNode;
+                const msg = document.createElement('div');
+                msg.id = 'eggFoundMessage';
+                msg.textContent = `${name.charAt(0).toUpperCase() + name.slice(1)} egg found WOOOOOOOOO`;
+                msg.style.color = 'red'; // Style as needed
+                shelterLink.parentNode.insertBefore(msg, shelterLink);
+                eggFound = true;
+            }
+        }
+    });
+});
+        document.querySelectorAll('img').forEach(img => {
+            img.style.border = img.classList.contains('highlightedEgg') ? '2px solid red' : '';
+        });
+
+        document.querySelectorAll('.pokemonEggSearch').forEach(input => {
+            const name = input.value.trim().toLowerCase();
+            if (!name) return;
+            document.querySelectorAll('img').forEach(img => {
+                if (img.alt.toLowerCase().includes(name)) {
+                    img.style.border = '2px solid red';
+                    img.classList.add('highlightedEgg');
+                } else {
+                    img.classList.remove('highlightedEgg');
+                }
+            });
+        });
+    }
+
+    // Function to create and setup a search input field
+    function createSearchInput(value, index) {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'pokemonEggSearch';
+        input.placeholder = 'Enter Pokémon Egg name...';
+        input.value = value;
+
+        // Highlight matching eggs as user types
+        input.addEventListener('input', function() {
+            let searchFields = JSON.parse(localStorage.getItem('searchFields')) || [];
+            searchFields[index] = this.value;
+            localStorage.setItem('searchFields', JSON.stringify(searchFields));
+            highlightEggs();
+        });
+
+        return input;
+    }
+
+    // Function to create a delete button for a search field
+    function createDeleteButton(index) {
+        const button = document.createElement('button');
+        button.textContent = 'X';
+        button.className = 'deleteSearchField';
+        button.onclick = function() {
+            document.querySelectorAll('.searchContainer')[index].remove();
+            updateSearchFieldsInLocalStorage();
+        };
+        return button;
+    }
+
+    // Update the search fields in localStorage after a field is added or removed
+    function updateSearchFieldsInLocalStorage() {
+        const searchFields = Array.from(document.querySelectorAll('.pokemonEggSearch')).map(input => input.value);
+        localStorage.setItem('searchFields', JSON.stringify(searchFields));
+    }
+
+    // Function to add a new search field to the UI
+    function addSearchField(value = '', index = 0) {
+        const container = document.createElement('div');
+        container.className = 'searchContainer';
+        container.appendChild(createSearchInput(value, index));
+        container.appendChild(createDeleteButton(index));
+        document.getElementById('searchFieldsContainer').appendChild(container);
+        updateSearchFieldsInLocalStorage();
+    }
+
+    // Load search fields from localStorage and display them
+    function loadSearchFields() {
+        const searchFields = JSON.parse(localStorage.getItem('searchFields')) || [''];
+        searchFields.forEach(addSearchField);
+    }
+
+    // Setup initial UI components
+    const searchFieldsContainer = document.createElement('div');
+    searchFieldsContainer.id = 'searchFieldsContainer';
+    document.body.insertBefore(searchFieldsContainer, document.body.firstChild);
+
+    const addButton = document.createElement('button');
+    addButton.textContent = 'Add Search Field';
+    addButton.onclick = function() {
+        addSearchField();
+        highlightEggs(); // Update highlights in case of empty/new fields
+    };
+    document.body.insertBefore(addButton, searchFieldsContainer.nextSibling);
+
+    loadSearchFields(); // Load and display the persisted search fields
+    highlightEggs(); // Initial highlight call in case there are persisted search terms
+})();
